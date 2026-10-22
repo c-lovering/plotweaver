@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Plotweaver
+GenericName=Novel Outliner
+Comment=Outline novels in plain Markdown, Obsidian-compatible
+Exec=Plotweaver %F
+Icon=plotweaver
+Terminal=false
+Categories=Office;WordProcessor;
+Keywords=novel;outline;writing;markdown;obsidian;
+StartupWMClass=plotweaver

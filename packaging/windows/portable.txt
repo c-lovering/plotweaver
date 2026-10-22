@@ -1,0 +1,9 @@
+This file switches Plotweaver into portable mode.
+
+While it sits next to Plotweaver.exe, Plotweaver keeps its own settings (theme, recent
+projects, view options) in the "data" folder right here instead of in the Windows registry,
+so you can carry this whole folder around on a USB stick or keep it in a synced folder.
+
+Delete this file to go back to normal per-user settings.
+
+Your novels themselves are never stored here; they live wherever you created them.

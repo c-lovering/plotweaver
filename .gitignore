@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build output
+build/
+dist/
+packaging/windows/version_info.txt
+
+# Portable-mode settings (created next to the app when portable.txt is present)
+data/
+/portable.txt
+
+# Test/sample projects people make while trying it out
+Sample*/
+*.pwtmp
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
