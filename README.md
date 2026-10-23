@@ -21,6 +21,13 @@ Get the latest version from the [Releases page](../../releases):
 Windows may show a SmartScreen warning the first time ("Windows protected your PC"), because the
 app isn't code-signed. Click **More info → Run anyway**.
 
+Both Windows downloads include a sample project, "The Ember Crown", a short example novel that
+uses every feature. The portable zip has it in a `Sample Project` folder beside `Plotweaver.exe`.
+The installer puts it in `Documents\Plotweaver\Sample Project`. When you upgrade, the installer
+offers to replace a sample from an older version, and it never touches a sample from the same
+version or a folder of your own. On any version, **File → Open Sample Project** (or the button on
+the start screen) opens it, and creates it in `Documents/Plotweaver` if it isn't there yet.
+
 The portable and installed versions are the same program. The only difference is the
 `portable.txt` file in the portable folder, which tells Plotweaver to keep its settings next to
 itself instead of in your user profile. Your novels are never stored with the app either way.
@@ -47,7 +54,9 @@ To build on your own PC:
   without it.
 * **Linux:** `pip install pyinstaller && pyinstaller --noconfirm plotweaver.spec && packaging/linux/build_appimage.sh`
 
-To try it with example content, run `python make_sample.py "Sample Project"` and then open that folder.
+To try it with example content, use **File → Open Sample Project**, or run
+`python make_sample.py "Sample Project"` and open that folder. The sample's content is in
+`plotweaver/sample.py`. The builds generate it from there, so it always matches the version.
 
 ## The project folder
 

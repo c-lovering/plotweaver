@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QStandardPaths
 
 ORG = APP = "Plotweaver"
 
@@ -37,3 +37,15 @@ def app_settings() -> QSettings:
         except OSError:
             pass  # read-only location: fall back to per-user settings
     return QSettings(ORG, APP)
+
+
+def documents_dir() -> Path:
+    loc = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+    return Path(loc) if loc else Path.home()
+
+
+def sample_locations() -> tuple[Path, Path]:
+    """(beside the program, in Documents). The portable zip ships the first; the installer
+    puts it in the second, and File → Open Sample Project builds it there when it's missing."""
+    from .sample import SAMPLE_NAME
+    return app_dir() / SAMPLE_NAME, documents_dir() / "Plotweaver" / SAMPLE_NAME

@@ -33,6 +33,8 @@ jobs:
           fi
       - name: Build with PyInstaller
         run: pyinstaller --noconfirm plotweaver.spec
+      - name: Sample project
+        run: python make_sample.py "build/Sample Project" --replace
       - name: Portable zip
         shell: pwsh
         run: |
@@ -40,12 +42,41 @@ jobs:
           $dir = "dist/Plotweaver-$v-portable"
           Copy-Item -Recurse dist/Plotweaver $dir
           Copy-Item packaging/windows/portable.txt $dir
+          Copy-Item -Recurse "build/Sample Project" "$dir/Sample Project"
           Compress-Archive -Path $dir -DestinationPath "dist/Plotweaver-$v-windows-portable.zip"
       - name: Installer
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" packaging\windows\installer.iss
+      - name: Installer test (sample project in Documents)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $setup = (Resolve-Path "dist/Plotweaver-$v-Setup.exe").Path
+          $sample = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Plotweaver\Sample Project"
+          $marker = Join-Path $sample ".plotweaver-sample"
+          function Install {
+            $p = Start-Process -Wait -PassThru -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/CURRENTUSER", "/NORESTART"
+            if ($p.ExitCode -ne 0) { Fail "setup exited with $($p.ExitCode)" }
+          }
+          function Fail($m) { Write-Host "::error::$m"; exit 1 }
+          if (Test-Path $sample) { Remove-Item -Recurse -Force $sample }
+          Install
+          if (-not (Test-Path "$sample\project.md")) { Fail "fresh install didn't create the sample" }
+          Set-Content "$sample\notes\mine.md" "my note"
+          Install
+          if (-not (Test-Path "$sample\notes\mine.md")) { Fail "reinstalling the same version touched the sample" }
+          (Get-Content $marker) -replace "version = .*", "version = 0.0.1" | Set-Content $marker
+          Install
+          if (Test-Path "$sample\notes\mine.md") { Fail "an older sample wasn't replaced" }
+          if (-not (Select-String -Quiet -Path $marker -Pattern "version = $v")) { Fail "replaced sample has the wrong version" }
+          Remove-Item -Recurse -Force $sample
+          New-Item -ItemType Directory $sample | Out-Null
+          Set-Content "$sample\mine.txt" "x"
+          Install
+          if (Test-Path "$sample\project.md") { Fail "setup wrote into a folder that wasn't a Plotweaver sample" }
+          Write-Host "Sample project install checks passed"
       - uses: actions/upload-artifact@v4
         with:
           name: windows

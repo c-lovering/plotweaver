@@ -22,7 +22,8 @@ from .. import __version__
 from ..model import (CHAPTER_NUM_RE, OUTLINE_TYPES, STATUSES, TYPE_LABELS, Entity, ModelError,
                      Project, Query, as_list, clean_title, natural_key, strip_link)
 from ..prose import PROSE_FILTER
-from ..settings import app_settings, is_portable
+from ..sample import build_sample, is_older, sample_version
+from ..settings import app_settings, is_portable, sample_locations
 from .editor import EntityEditor
 from .theme import THEMES, accent, apply_theme, current_theme
 from .graph import GraphView
@@ -359,10 +360,14 @@ class MainWindow(QMainWindow):
         brow = QHBoxLayout()
         brow.addStretch(1)
         b_new, b_open = QPushButton("New project…"), QPushButton("Open project…")
+        b_sample = QPushButton("Open the sample project")
+        b_sample.setToolTip("“The Ember Crown”: a small example novel that uses every feature.")
         b_new.clicked.connect(self.new_project)
         b_open.clicked.connect(self.open_project_dialog)
+        b_sample.clicked.connect(self.open_sample)
         brow.addWidget(b_new)
         brow.addWidget(b_open)
+        brow.addWidget(b_sample)
         brow.addStretch(1)
         wl.addLayout(brow)
         wl.addStretch(2)
@@ -401,6 +406,8 @@ class MainWindow(QMainWindow):
     def _build_actions(self):
         S = QStyle
         self.a_new_proj = self._act("&New Project…", self.new_project, "Ctrl+Shift+N")
+        self.a_open_sample = self._act("Open &Sample Project", self.open_sample,
+                                       tip="A small example novel that uses every feature")
         self.a_open_proj = self._act("&Open Project…", self.open_project_dialog, "Ctrl+O",
                                      icon=S.SP_DialogOpenButton)
         self.a_reveal = self._act("Show Project &Folder", self.reveal_folder)
@@ -440,6 +447,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_new_proj, self.a_open_proj])
         self.recent_menu = m.addMenu("Open &Recent")
         self.recent_menu.aboutToShow.connect(self._fill_recent)
+        m.addAction(self.a_open_sample)
         m.addSeparator()
         m.addActions([self.a_reveal, self.a_reload, self.a_import])
         m.addSeparator()
@@ -532,6 +540,48 @@ class MainWindow(QMainWindow):
                 return
             Project.new_project(folder, Path(folder).name)
         self.open_project(folder)
+
+    def open_sample(self):
+        """Open the sample project: the copy beside the program (portable), else the one in
+        Documents/Plotweaver, building it there if it's missing and offering to refresh an
+        older one."""
+        self.editor.flush()
+        beside, docs = sample_locations()
+        if sample_version(beside) is not None:
+            self.open_project(beside)
+            return
+        target = docs
+        v = sample_version(target)
+        try:
+            if not target.exists():
+                self.statusBar().showMessage("Creating the sample project…")
+                build_sample(target)
+                self.statusBar().showMessage(f"Sample project created in {target}", 8000)
+            elif v is not None and is_older(v) and self.settings.value("sample/kept", "", str) != __version__:
+                box = QMessageBox(self)
+                box.setIcon(QMessageBox.Question)
+                box.setWindowTitle("Newer sample project")
+                box.setText(f"Your sample project is from Plotweaver {v}. This version ({__version__}) "
+                            "has a newer one that shows off more features.")
+                box.setInformativeText(f"Replace it? Any changes you made to the sample in\n{target}\nwill be lost.")
+                rb = box.addButton("Replace it", QMessageBox.AcceptRole)
+                box.addButton("Keep mine", QMessageBox.RejectRole)
+                box.exec()
+                if box.clickedButton() is rb:
+                    if self.project and self.project.root == target.resolve():
+                        self.project = None
+                    build_sample(target, replace=True)
+                else:
+                    self.settings.setValue("sample/kept", __version__)
+            elif v is None and not Project.is_project(target):
+                QMessageBox.warning(self, "Sample project",
+                                    f"{target} already exists but isn't a Plotweaver project, so it "
+                                    "was left alone. Rename or move it and try again.")
+                return
+        except OSError as ex:
+            QMessageBox.warning(self, "Couldn't create the sample project", str(ex))
+            return
+        self.open_project(target)
 
     def open_project(self, folder):
         self.editor.flush()
