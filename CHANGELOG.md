@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Sample project**
+- The Windows portable zip ships a `Sample Project` folder next to Plotweaver.exe. The installer
+  puts it in `Documents\Plotweaver\Sample Project` and, on upgrade, offers to replace a sample from
+  an older version (never one from the same version, or a folder that isn't a Plotweaver sample).
+- **File → Open Sample Project** and a start-screen button open it, creating it in
+  `Documents/Plotweaver` when missing. This covers Linux and running from source, and offers to
+  refresh an older copy.
+
 **Relationships**
 - Characters have a **Relationships** field: who with, kind, intensity 0–5, since/until (a chapter,
   scene or chapter number) and a note. Stored as a `relationships:` list in the character's
