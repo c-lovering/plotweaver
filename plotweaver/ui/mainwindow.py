@@ -25,6 +25,7 @@ from ..prose import PROSE_FILTER
 from ..settings import app_settings, is_portable
 from .editor import EntityEditor
 from .theme import THEMES, accent, apply_theme, current_theme
+from .graph import GraphView
 from .views import CorkboardView, MatrixView
 from .widgets import avatar, image_size, make_completer, status_icon
 
@@ -268,7 +269,7 @@ class MainWindow(QMainWindow):
         self.filter.setPlaceholderText("Filter…  (names, or #tag)")
         self.filter.setToolTip("Filter by name or summary text, and/or #tags.\n"
                                "Several terms must all match: “#flashback sera”.\n"
-                               "The corkboard and matrix follow this filter too.")
+                               "The corkboard, matrix and relationship scene counts follow this filter too.")
         self.filter.setClearButtonEnabled(True)
         self.filter_completer = make_completer(self.filter, TagCompleter)
         self.filter.setCompleter(self.filter_completer)
@@ -295,7 +296,8 @@ class MainWindow(QMainWindow):
         # ---------- views
         self.cork = CorkboardView(self.settings)
         self.matrix = MatrixView(self.settings)
-        for v in (self.cork, self.matrix):
+        self.graph = GraphView(self.settings)
+        for v in (self.cork, self.matrix, self.graph):
             v.selected.connect(self._view_selected)
             v.opened.connect(self._view_opened)
         self.cork.moveRequested.connect(self._do_move)
@@ -304,6 +306,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.editor, "Editor")
         self.tabs.addTab(self.cork, "Corkboard")
         self.tabs.addTab(self.matrix, "Matrix")
+        self.tabs.addTab(self.graph, "Relationships")
         self.tabs.currentChanged.connect(lambda *_: self._refresh_views())
 
         # ---------- linked mentions
@@ -429,6 +432,7 @@ class MainWindow(QMainWindow):
         self.a_tab_editor = self._act("&Editor", lambda: self.tabs.setCurrentIndex(0), "Ctrl+1")
         self.a_tab_cork = self._act("&Corkboard", lambda: self.tabs.setCurrentIndex(1), "Ctrl+2")
         self.a_tab_matrix = self._act("&Matrix", lambda: self.tabs.setCurrentIndex(2), "Ctrl+3")
+        self.a_tab_graph = self._act("&Relationships", lambda: self.tabs.setCurrentIndex(3), "Ctrl+4")
         self.a_find_tag = self._act("Filter by &Tag…", self._focus_tag_filter, "Ctrl+T")
 
         mb = self.menuBar()
@@ -450,7 +454,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_open_draft, self.a_goto])
         m = mb.addMenu("&View")
-        m.addActions([self.a_tab_editor, self.a_tab_cork, self.a_tab_matrix])
+        m.addActions([self.a_tab_editor, self.a_tab_cork, self.a_tab_matrix, self.a_tab_graph])
         m.addSeparator()
         tm = m.addMenu("T&heme")
         self.theme_group = QActionGroup(self)
@@ -492,7 +496,7 @@ class MainWindow(QMainWindow):
         for a in (self.a_reveal, self.a_reload, self.a_part, self.a_chapter, self.a_scene, self.a_char,
                   self.a_place, self.a_codex, self.a_note, self.a_up, self.a_down, self.a_rename,
                   self.a_delete, self.a_renumber, self.a_import, self.a_open_draft, self.a_goto, self.a_tab_editor,
-                  self.a_tab_cork, self.a_tab_matrix, self.a_find_tag, *self._project_tb):
+                  self.a_tab_cork, self.a_tab_matrix, self.a_tab_graph, self.a_find_tag, *self._project_tb):
             a.setEnabled(on)
         self.toolbar.setVisible(on)
 
@@ -542,6 +546,7 @@ class MainWindow(QMainWindow):
         self.editor.set_project(self.project)
         self.cork.set_project(self.project)
         self.matrix.set_project(self.project)
+        self.graph.set_project(self.project)
         self._first_build = True
         self.rebuild_tree()
         self._rewatch()
@@ -844,6 +849,7 @@ class MainWindow(QMainWindow):
         q = self.query()
         self.cork.set_query(q)
         self.matrix.set_query(q)
+        self.graph.set_query(q)
         self._refresh_views()
 
     def _refresh_views(self):
@@ -856,9 +862,9 @@ class MainWindow(QMainWindow):
         if w is self.editor:
             return
         w.refresh()
-        if w is self.cork:
+        if w in (self.cork, self.graph):
             cur = self.current_entity()
-            self.cork.set_current(cur.path if cur else None)
+            w.set_current(cur.path if cur else None)
 
     def _view_selected(self, path):
         self.editor.flush()
@@ -901,6 +907,7 @@ class MainWindow(QMainWindow):
         self.editor.flush()
         e = self.current_entity()
         self.cork.set_current(e.path if e else None)
+        self.graph.set_current(e.path if e else None)
         if e is None:
             self.editor.clear()
         elif self.editor.path != e.path:

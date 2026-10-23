@@ -806,16 +806,7 @@ class MatrixView(QWidget):
     @staticmethod
     def presence(scene: Entity, project: Project) -> dict:
         """Character path -> 2 for POV, 1 for listed in Characters."""
-        out = {}
-        for n in as_list(scene.meta.get("characters")):
-            c = project.resolve(n)
-            if c is not None:
-                out[c.path] = 1
-        if scene.meta.get("pov"):
-            c = project.resolve(scene.meta.get("pov"))
-            if c is not None:
-                out[c.path] = 2
-        return out
+        return project.scene_cast(scene)
 
     def refresh(self):
         p = self.project

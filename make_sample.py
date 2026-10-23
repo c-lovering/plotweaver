@@ -76,6 +76,25 @@ for part, ch, sc, meta, notes in book:
         chapters[ch] = mk("chapter", f"Chapter {len(chapters) + 1}", part)
     if sc:
         mk("scene", sc, chapters[ch], meta=meta, body=notes)
+rels = {  # relationships live on either character's note; the graph shows them once per pair
+    "Kael Dunmore": [
+        {"with": S, "kind": "lover", "intensity": 4, "since": 3},
+        {"with": L, "kind": "lover", "intensity": 3, "since": 4, "note": "Bound to him before she's sure she wants it."},
+        {"with": M, "kind": "rival", "intensity": 2, "until": 3},
+        {"with": M, "kind": "lover", "intensity": 2, "since": 3},
+        {"with": "[[Brannoc]]", "kind": "enemy", "intensity": 4},
+    ],
+    "Sera Vale": [
+        {"with": M, "kind": "rival", "intensity": 3, "until": 4, "note": "Old warden-vs-sheriff grudge."},
+        {"with": M, "kind": "lover", "intensity": 3, "since": 4, "note": "Slow burn; starts after the fight."},
+    ],
+    "Lysandra": [
+        {"with": S, "kind": "attraction", "intensity": 3, "since": 2, "note": "Sera hasn't noticed."},
+        {"with": M, "kind": "harem sister", "intensity": 1, "since": 3},
+    ],
+}
+for who, entries in rels.items():
+    e = p.resolve(who); m = dict(e.meta); m["relationships"] = entries; p.save(e, m)
 gate = p.resolve("Gate at Dusk"); m = dict(gate.meta); m["prose"] = "drafts/gate.txt"; p.save(gate, m)
 inn = p.resolve("The Innkeeper"); m = dict(inn.meta); m["prose"] = "drafts/innkeeper.txt"; m["status"] = "drafted"; p.save(inn, m)
 print("Sample project written to", root.resolve())

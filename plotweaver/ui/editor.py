@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFormLayout, QHBoxL
 
 from .. import mdio
 from ..model import STATUSES, TYPE_LABELS, Entity, ModelError, Project, strip_link
+from .relationships import RelationshipsEdit
 from .widgets import LinkEdit, ListEdit, PortraitPanel, ProseField, WikiTextEdit
 
 ROLES = ["protagonist", "love interest", "antagonist", "rival", "mentor", "ally", "supporting", "minor"]
@@ -33,7 +34,8 @@ SCHEMAS = {
                   ("age", "Age", "text", None), ("species", "Species / race", "text", None),
                   ("traits", "Key traits", "list", "traits"),
                   ("appearance", "Appearance", "longtext", None),
-                  ("affiliation", "Affiliation", "links", ("codex",)), ("tags", "Tags", "list", "tags"),
+                  ("affiliation", "Affiliation", "links", ("codex",)),
+                  ("relationships", "Relationships", "relationships", None), ("tags", "Tags", "list", "tags"),
                   ("portrait", "Portrait", "portrait", None), ("images", "Gallery", "gallery", None)],
     "place": [("aliases", "Aliases", "list", None), ("parent", "Located in", "link", ("place",)),
               ("tags", "Tags", "list", "tags")],
@@ -345,6 +347,11 @@ class EntityEditor(QWidget):
                          strip_hash=(key == "tags"))
             w.set_value(val)
             w.changed.connect(self._mark)
+        elif kind == "relationships":
+            w = RelationshipsEdit()
+            w.set_value(val)
+            w.changed.connect(self._mark)
+            w.follow.connect(self.followLink)
         elif kind == "longtext":
             w = QPlainTextEdit()
             w.setTabChangesFocus(True)
@@ -379,6 +386,11 @@ class EntityEditor(QWidget):
                 continue
             if kind in ("link", "links"):
                 w.set_options(p.names_for(opt))
+            elif kind == "relationships":
+                w.set_options([n for n in p.names_for(("character",)) if n != e.name],
+                              p.names_for(("chapter", "scene", "part")))
+                rels, _ = p.relationships()
+                w.set_incoming([r for r in rels if r.other is e and r.holder is not e])
             elif kind == "list" and opt == "tags":
                 w.set_options(p.all_tags())
             elif kind == "list" and opt:
@@ -435,7 +447,7 @@ class EntityEditor(QWidget):
                 v = w.currentText().strip()
             elif kind == "int":
                 v = w.value()
-            elif kind in ("link", "links", "list", "prose"):
+            elif kind in ("link", "links", "list", "prose", "relationships"):
                 v = w.value()
             elif kind == "longtext":
                 v = w.toPlainText().strip()

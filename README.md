@@ -81,7 +81,7 @@ My Novel/
 | Rename | Edit the big title, or press `F2` |
 | Link | Type `[[` in the notes for name suggestions. `Ctrl+click` a link to follow it. |
 | Go to anything | `Ctrl+P` |
-| Editor / Corkboard / Matrix | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
+| Editor / Corkboard / Matrix / Relationships | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` |
 | Filter by tag | `Ctrl+T` |
 | Open the scene's draft | `Ctrl+E` |
 
@@ -157,6 +157,45 @@ protagonist and the love interests. Change them with **Characters…**.
   for first appearance.
 * Filter by `#tag` to see screen time within, say, only `#flashback` scenes.
 
+### Relationships (`Ctrl+4`)
+
+Add relationships under **Relationships** on a character's note: who with, what kind, an
+intensity from 0 to 5, and optionally when it starts and ends. Each one belongs to the pair, so
+write it on either character. The other character's note lists it under *On other notes*.
+
+```yaml
+relationships:
+  - with: "[[Maren Holt]]"
+    kind: rival
+    until: 4                 # ends at chapter 4
+  - with: "[[Maren Holt]]"
+    kind: lover
+    intensity: 3
+    since: 4                 # a chapter number, or a [[chapter]] or [[scene]] link
+    note: Slow burn; starts after the fight.
+```
+
+The kinds are lover, attraction, harem sister, friend, family, ally, rival, enemy, mentor and
+serves, and you can type your own. *Attraction*, *mentor* and *serves* are one-way, read from
+the character whose note holds them ("Lysandra is drawn to Sera"), and are drawn with an arrow.
+Everything else counts both ways. To show a relationship changing (rivals to lovers), end one
+entry and start the next at the same point.
+
+The **Relationships** tab draws them as a web:
+
+* **Harem** puts the protagonist in the middle and the love interests on a ring, so the
+  relationships between the women show as lines across it. **Everyone in a relationship** adds
+  the rest of the cast on an outer ring, and **All characters** shows every character.
+* The **As of** slider shows the web at any chapter. Relationships that haven't started yet are
+  hidden, and ones that have ended are dashed (untick **Ended** to hide them).
+* A thicker line means a higher intensity. Each link shows how many scenes the pair have shared
+  so far. *0 scenes* is in red because those two have never been on the page together.
+* **Unlinked pairs** draws a dotted line between characters who share scenes but have no
+  relationship written down.
+* Drag characters to rearrange them. The layout is remembered per project, and **Reset layout**
+  puts the ring back. Click a character or a link to select its note, or double-click to open it.
+  **Kinds…** hides kinds you don't want to see. A `#tag` filter limits the scene counts.
+
 ### Chapter numbers
 
 If a chapter's name doesn't match its position (say "Chapter 5" is now first), cards and matrix
@@ -175,6 +214,6 @@ found, or otherwise the file's default app. You can set a specific command in
 
 ## Roadmap
 
-* v2: relationship graph, love-interest arc stages (shown in the matrix)
+* v2: love-interest arc stages (shown in the matrix)
 * v3: story timeline, heat/pacing curve, structure-beat templates, progress dashboard,
   compiled outline export
