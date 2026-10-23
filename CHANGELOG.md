@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 **Sample project**
 - The Windows portable zip ships a `Sample Project` folder next to Plotweaver.exe. The installer
