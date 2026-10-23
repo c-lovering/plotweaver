@@ -41,6 +41,12 @@ TYPE_LABELS = {"project": "Project", "part": "Part", "chapter": "Chapter", "scen
 LINK_RE = re.compile(r"\[\[([^\[\]|#^\n]+?)\s*(?:[#^][^\[\]|\n]*)?(?:\|[^\[\]\n]*)?\]\]")
 TAG_RE = re.compile(r"(?<![\w#&/\\])#([\w/\-]*[^\W\d][\w/\-]*)")
 CHAPTER_NUM_RE = re.compile(r"^(chapter|ch\.?)(\s*)(\d+)\b(.*)$", re.I)
+# Relationship kinds offered in the editor. Directed kinds read "holder <verb> other";
+# any other kind someone types is allowed and treated as mutual.
+REL_KINDS = ["lover", "attraction", "harem sister", "friend", "family", "ally", "rival",
+             "enemy", "mentor", "serves"]
+REL_DIRECTED = {"attraction": "is drawn to", "mentor": "mentors", "serves": "serves"}
+REL_KEYS = ("with", "kind", "intensity", "since", "until", "note")
 _BAD_CHARS = re.compile(r'[\\/:*?"<>|#^\[\]\x00-\x1f]')
 
 
@@ -139,6 +145,35 @@ class Query:
             hay = " ".join([e.name, *e.aliases, str(e.meta.get("summary") or "")]).lower()
             return all(w in hay for w in self.words)
         return True
+
+
+@dataclass(eq=False)
+class Relationship:
+    """One entry in a character's `relationships:` list.
+
+    It belongs to the pair, not just to the note it's written on: the graph shows it
+    the same whichever of the two characters holds it."""
+    holder: "Entity"       # the character note the entry is written in
+    index: int             # position in that note's list
+    other: "Entity"        # who it's with
+    kind: str
+    intensity: int | None  # 0-5, None when not set
+    since: object          # raw value: a [[chapter or scene]] link, a chapter number, or ""
+    until: object
+    note: str
+
+    @property
+    def directed(self) -> bool:
+        return self.kind.lower() in REL_DIRECTED
+
+    def pair(self) -> frozenset:
+        return frozenset((self.holder.path, self.other.path))
+
+    def describe(self) -> str:
+        verb = REL_DIRECTED.get(self.kind.lower())
+        if verb:
+            return f"{self.holder.name} {verb} {self.other.name}"
+        return f"{self.holder.name} & {self.other.name}: {self.kind or 'related'}"
 
 
 @dataclass(eq=False)
@@ -606,6 +641,102 @@ class Project:
         while e is not None and e.type != "chapter":
             e = e.parent
         return e
+
+    # ---------------------------------------------------------------- relationships
+    def scene_cast(self, scene: Entity) -> dict:
+        """Character path -> 2 for the POV, 1 for listed in Characters."""
+        out = {}
+        for n in as_list(scene.meta.get("characters")):
+            c = self.resolve(n)
+            if c is not None and c.type == "character":
+                out[c.path] = 1
+        if scene.meta.get("pov"):
+            c = self.resolve(scene.meta.get("pov"))
+            if c is not None and c.type == "character":
+                out[c.path] = 2
+        return out
+
+    @staticmethod
+    def rel_entries(e: Entity) -> list:
+        """The raw `relationships:` list of a note (only the dict entries)."""
+        return [r for r in as_list(e.meta.get("relationships")) if isinstance(r, dict)]
+
+    def relationships(self) -> tuple[list[Relationship], list[str]]:
+        """Every relationship in the project, plus the names they point at that
+        don't resolve to a character."""
+        out, missing = [], []
+        for c in self.by_type("character"):
+            for i, r in enumerate(as_list(c.meta.get("relationships"))):
+                if not isinstance(r, dict) or not r.get("with"):
+                    continue
+                other = self.resolve(r.get("with"))
+                if other is None or other.type != "character":
+                    missing.append(strip_link(r.get("with")))
+                    continue
+                if other is c:
+                    continue
+                try:
+                    inten = int(r.get("intensity"))
+                    inten = max(0, min(5, inten))
+                except (TypeError, ValueError):
+                    inten = None
+                out.append(Relationship(c, i, other, str(r.get("kind") or "").strip(), inten,
+                                        r.get("since") or "", r.get("until") or "",
+                                        str(r.get("note") or "").strip()))
+        return out, sorted(set(missing), key=natural_key)
+
+    def story_index(self, value) -> int | None:
+        """0-based chapter index a `since`/`until` value points at.
+
+        Accepts a [[link]] to a chapter, a scene (its chapter) or a part (its first
+        chapter), or a plain chapter number. None when empty or unresolvable."""
+        if value is None or value == "" or isinstance(value, bool):
+            return None
+        chapters = self.chapters_in_order()
+        if isinstance(value, (int, float)) or (isinstance(value, str) and value.strip().isdigit()):
+            n = int(value)
+            return max(0, min(n - 1, len(chapters) - 1)) if chapters else None
+        e = self.resolve(value)
+        if e is None:
+            return None
+        if e.type == "part":
+            sub = self.chapters_in_order(e)
+            e = sub[0] if sub else None
+        else:
+            e = self.chapter_of(e)
+        for i, ch in enumerate(chapters):
+            if ch is e:
+                return i
+        return None
+
+    def rel_state(self, r: Relationship, at: int | None) -> str:
+        """"active", "ended" or "future" as of chapter index `at` (None = whole story)."""
+        since, until = self.story_index(r.since), self.story_index(r.until)
+        if at is None:
+            return "ended" if until is not None else "active"
+        if since is not None and since > at:
+            return "future"
+        if until is not None and until <= at:
+            return "ended"
+        return "active"
+
+    def shared_scenes(self, upto: int | None = None, query: "Query | None" = None) -> dict:
+        """frozenset({path, path}) -> number of scenes both characters are in,
+        counting scenes in chapters up to index `upto` (None = all)."""
+        chapter_idx = {ch.path: i for i, ch in enumerate(self.chapters_in_order())}
+        counts = Counter()
+        for s in self.scenes_in_order():
+            if query is not None and query.tags and not query.tag_match(s):
+                continue
+            if upto is not None:
+                ch = self.chapter_of(s)
+                if ch is not None and chapter_idx.get(ch.path, 0) > upto:
+                    continue
+            cast = sorted(self.scene_cast(s), key=str)
+            for i, a in enumerate(cast):
+                for b in cast[i + 1:]:
+                    counts[frozenset((a, b))] += 1
+        return dict(counts)
 
     def name_taken(self, name: str, exclude: Entity | None = None) -> bool:
         hit = self.names.get(name.lower())

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.0
+
+**Sample project**
+- The Windows portable zip ships a `Sample Project` folder next to Plotweaver.exe. The installer
+  puts it in `Documents\Plotweaver\Sample Project` and, on upgrade, offers to replace a sample from
+  an older version (never one from the same version, or a folder that isn't a Plotweaver sample).
+- **File → Open Sample Project** and a start-screen button open it, creating it in
+  `Documents/Plotweaver` when missing. This covers Linux and running from source, and offers to
+  refresh an older copy.
+
+**Relationships**
+- Characters have a **Relationships** field: who with, kind, intensity 0–5, since/until (a chapter,
+  scene or chapter number) and a note. Stored as a `relationships:` list in the character's
+  properties. Each one belongs to the pair, and the other character's note lists it too.
+- New **Relationships** tab (`Ctrl+4`). Harem layout puts the protagonist in the center with love
+  interests on a ring, so relationships between the women show as chords across it. Intensity is
+  line thickness, one-way kinds get arrows, and each link shows the pair's shared scenes
+  (red when they've never shared one).
+- **As of** chapter slider: relationships appear when they start, and ended ones turn dashed.
+- Dotted lines for pairs who share scenes but have no relationship yet; draggable layout
+  remembered per project.
+
 ## 0.4.0 — first public release
 
 **Outlining**
